@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket - Prueba Final</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        #status { padding: 15px; margin: 10px 0; border-radius: 5px; font-weight: bold; }
+        .connected { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .connecting { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        #log { border: 1px solid #ccc; height: 300px; overflow: auto; padding: 10px; margin: 10px 0; background: #f8f9fa; }
+        input, button { padding: 10px; margin: 5px 0; }
+        input { width: 70%; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .message-sent { color: #0066cc; }
+        .message-received { color: #008800; }
+        .message-system { color: #666666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>🔌 WebSocket - Prueba Definitiva</h1>
+    <p>Conectando a: <strong>wss://panel.smartbase.club/ws</strong></p>
+    
+    <div id="status" class="connecting">🔄 Conectando al servidor WebSocket...</div>
+    
+    <div id="log"></div>
+    
+    <div>
+        <input type="text" id="message" placeholder="Escribe tu mensaje..." disabled>
+        <button id="sendBtn" disabled>📤 Enviar</button>
+    </div>
+    
+    <div style="margin-top: 10px;">
+        <button id="connectBtn" style="background: #28a745; display: none;">🔌 Reconectar</button>
+        <button id="disconnectBtn" style="background: #dc3545;">❌ Desconectar</button>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        
+        const statusDiv = document.getElementById('status');
+        const logDiv = document.getElementById('log');
+        const messageInput = document.getElementById('message');
+        const sendBtn = document.getElementById('sendBtn');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        
+        function addLog(message, type = 'system') {
+            const div = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString();
+            div.innerHTML = `<span style="color:#999;">[${timestamp}]</span> <span class="message-${type}">${message}</span>`;
+            logDiv.appendChild(div);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(status, message) {
+            statusDiv.innerHTML = message;
+            statusDiv.className = status;
+            
+            if (status === 'connected') {
+                isConnected = true;
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+            } else if (status === 'error' || status === 'disconnected') {
+                isConnected = false;
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                connectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none';
+            } else if (status === 'connecting') {
+                isConnected = false;
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+            }
+        }
+        
+        function connect() {
+            updateStatus('connecting', '🔄 Conectando al servidor WebSocket...');
+            
+            try {
+                ws = new WebSocket('wss://panel.smartbase.club/ws');
+                
+                ws.onopen = () => {
+                    updateStatus('connected', '✅ Conectado al WebSocket');
+                    addLog('✅ Conexión establecida correctamente', 'system');
+                    addLog('📡 ReadyState: ' + ws.readyState, 'system');
+                };
+                
+                ws.onerror = (error) => {
+                    updateStatus('error', '❌ Error de conexión');
+                    addLog('❌ Error: No se pudo establecer conexión', 'system');
+                    console.error('WebSocket error:', error);
+                };
+                
+                ws.onclose = (event) => {
+                    updateStatus('disconnected', `🔌 Desconectado (código: ${event.code})`);
+                    addLog(`🔌 Conexión cerrada - Código: ${event.code} - Limpio: ${event.wasClean} - Razón: ${event.reason || 'sin razón'}`, 'system');
+                };
+                
+                ws.onmessage = (event) => {
+                    addLog(`📨 Recibido: ${event.data}`, 'received');
+                    console.log('Mensaje recibido:', event.data);
+                };
+                
+            } catch (e) {
+                updateStatus('error', '❌ Error al crear conexión');
+                addLog(`❌ Excepción: ${e.message}`, 'system');
+            }
+        }
+        
+        function disconnect() {
+            if (ws && isConnected) {
+                ws.close();
+                addLog('🔌 Desconectando voluntariamente...', 'system');
+            }
+        }
+        
+        function sendMessage() {
+            if (ws && isConnected) {
+                const message = messageInput.value.trim();
+                if (message) {
+                    ws.send(message);
+                    addLog(`📤 Enviado: ${message}`, 'sent');
+                    messageInput.value = '';
+                } else {
+                    addLog('⚠️ Escribe un mensaje primero', 'system');
+                }
+            } else {
+                addLog('⚠️ No estás conectado al WebSocket', 'system');
+            }
+        }
+        
+        // Event listeners
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && isConnected) sendMessage();
+        });
+        
+        // Conectar automáticamente
+        connect();
+    </script>
+</body>
+</html>

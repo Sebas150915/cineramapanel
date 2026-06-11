@@ -1,0 +1,6 @@
+# Permitir WebSocket sin autenticación
+RewriteEngine On
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteRule ^(chat|ws) - [L,NC]
+
+# El resto de tu configuración existente
